@@ -7,16 +7,28 @@ from todolist import settings
 from todolist.serializers import TodoListSerializer, TaskSerializer
 from todolist.models import Task, TodoList
 import jwt
+from datetime import datetime
 from itertools import islice
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def getToDoList(request):
     result = request.headers['Authorization'].split(' ')
+    
+    fromQuery = request.GET.get('from')
+    toQuery = request.GET.get('to')
+    name = request.GET.get('name')
+
+    print(name)
+
     decodePayload = jwt.decode(result[1], settings.SECRET_KEY, algorithms=['HS256'])
     userId=decodePayload['user_id']
     user=User.objects.get(id=userId)
-    toDoList = TodoList.objects.filter(owner=user)
+    toDoList = TodoList.objects.filter(owner=user, 
+                                       created_at__range=[fromQuery if fromQuery is not None else datetime.min, 
+                                                          toQuery if toQuery is not None else datetime.max],
+                                        title__contains=name if name is not None else ''
+                                                          )
     serializer = TodoListSerializer(toDoList, many=True)
     return Response(serializer.data)
 
