@@ -2,11 +2,9 @@ import json
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
-from rest_framework_simplejwt.views import TokenObtainPairView
-from rest_framework import generics
 from django.contrib.auth.models import User
 from todolist import settings
-from todolist.serializers import TodoListSerializer
+from todolist.serializers import TodoListSerializer, TaskSerializer
 from todolist.models import Task, TodoList
 import jwt
 from itertools import islice
@@ -22,7 +20,7 @@ def getToDoList(request):
     serializer = TodoListSerializer(toDoList, many=True)
     return Response(serializer.data)
 
-@api_view(['GET', 'PUT'])
+@api_view(['GET', 'PUT', 'DELETE'])
 @permission_classes([IsAuthenticated])
 def getToDoListDetail(request, listId):
     result = request.headers['Authorization'].split(' ')
@@ -31,15 +29,15 @@ def getToDoListDetail(request, listId):
     user=User.objects.get(id=userId)
 
     toDoList = TodoList.objects.filter(owner=user, id=listId).prefetch_related('task_list').first()
-    data = request.data
 
     if not toDoList:
             return Response({"error": "ENTITY_NOT_FOUND"})
     else:
             if request.method == 'GET':
-                serializer = TodoListSerializer(toDoList, many=True)
+                serializer = TodoListSerializer(toDoList)
                 return Response(serializer.data)
-            else:
+            
+            if request.method == 'PUT':
                 serializer = TodoListSerializer(toDoList, data=request.data, partial=True)
 
                 if serializer.is_valid():
@@ -47,6 +45,14 @@ def getToDoListDetail(request, listId):
                     return Response(serializer.data)
                 else:
                     return Response({"error": "INTERNAL_SERVER_ERROR"}) 
+            
+            if request.method == 'DELETE':
+                count = toDoList.delete()
+
+                if count is not None:
+                     return Response({'msg': 'Delete successfully'})
+                else:
+                     return Response({'error': 'INTERNAL_SERVER_ERROR'})
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -75,7 +81,6 @@ def addTasks(request, listId):
     user=User.objects.get(id=userId)
     toDoList = TodoList.objects.filter(owner=user, id=listId)
     data = request.data
-    print(len(request.data))
     batch_size=len(request.data)
     objs = (Task(title=data[i]['title'],
                   description=data[i]['description'],
@@ -95,4 +100,37 @@ def addTasks(request, listId):
             Task.objects.bulk_create(batch, batch_size)
         serializer = TodoListSerializer(toDoList, many=True)
         return Response(serializer.data)
-        
+    
+@api_view(['GET', 'PUT', 'DELETE'])
+@permission_classes([IsAuthenticated])
+def taskHandler(request, taskId):
+    result = request.headers['Authorization'].split(' ')
+    decodePayload = jwt.decode(result[1], settings.SECRET_KEY, algorithms=['HS256'])
+    userId=decodePayload['user_id']
+    user=User.objects.get(id=userId)
+
+    task = Task.objects.filter(id=taskId).first()
+
+    if not task:
+            return Response({"error": "ENTITY_NOT_FOUND"})
+    else:
+            if request.method == 'GET':
+                serializer = TaskSerializer(task)
+                return Response(serializer.data)
+            
+            if request.method == 'PUT':
+                serializer = TaskSerializer(task, data=request.data, partial=True)
+
+                if serializer.is_valid():
+                    serializer.save()
+                    return Response(serializer.data)
+                else:
+                    return Response({"error": "INTERNAL_SERVER_ERROR"}) 
+            
+            if request.method == 'DELETE':
+                count = TaskSerializer.delete()
+
+                if count is not None:
+                     return Response({'msg': 'Delete successfully'})
+                else:
+                     return Response({'error': 'INTERNAL_SERVER_ERROR'})

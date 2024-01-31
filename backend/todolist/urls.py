@@ -26,7 +26,9 @@ urlpatterns = [
     path('to-do-list/<str:listId>/', views.getToDoListDetail, name="getToDoListDetail"),
     path('to-do-list/<str:listId>/tasks', views.addTasks, name="addTasks"),
     path('to-do-lists/', views.getToDoList, name="createToDoList"),
-    path('clean-to-do/', views.delete_everything, name="cleanToDo")
+    path('clean-to-do/', views.delete_everything, name="cleanToDo"),
+    path('task/', views.createTodoList, name="createToDoList"),
+    path('task/<str:taskId>/', views.taskHandler, name="taskHandler"),
 ]
 
 urlpatterns += router.urls
