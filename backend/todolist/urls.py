@@ -16,11 +16,17 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from rest_framework import routers
+from todolist import views
 
 router = routers.DefaultRouter()
 
 urlpatterns = [
     path('auth/', include('user.urls')),
+    path('to-do-list/', views.createTodoList, name="createToDoList"),
+    path('to-do-list/<str:listId>/', views.getToDoListDetail, name="getToDoListDetail"),
+    path('to-do-list/<str:listId>/tasks', views.addTasks, name="addTasks"),
+    path('to-do-lists/', views.getToDoList, name="createToDoList"),
+    path('clean-to-do/', views.delete_everything, name="cleanToDo")
 ]
 
 urlpatterns += router.urls
